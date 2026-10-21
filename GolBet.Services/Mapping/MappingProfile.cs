@@ -20,6 +20,11 @@ public class MappingProfile : Profile
                        options => options.MapFrom(
                            match => match.Bets.Count)).MaxDepth(4);
 
+        CreateMap<Bet, BetDto>()
+            .ForMember(dto => dto.PotentialPayout,
+                       options => options.MapFrom(bet => bet.Amount * bet.OddsAtPlacement))
+            .MaxDepth(4);
+
         CreateMap<Team, TeamDto>().MaxDepth(4);
         CreateMap<Team, TeamFormDto>().MaxDepth(4);
         CreateMap<TeamFormDto, Team>(MemberList.None).MaxDepth(4);

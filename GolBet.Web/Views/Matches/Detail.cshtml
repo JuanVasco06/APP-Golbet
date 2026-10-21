@@ -79,6 +79,50 @@
                 </div>
             </div>
         </div>
+        @if (Model.Status == MatchStatus.Scheduled && Model.Date > DateTime.UtcNow)
+        {
+            @if (User.IsInRole(DbSeeder.BettorRole))
+            {
+                <hr />
+                <h5 class="text-center mb-3">🎯 Haz tu apuesta</h5>
+                <form asp-controller="Bets" asp-action="Place" method="post" class="col-md-8 mx-auto">
+                    <input type="hidden" name="MatchId" value="@Model.Id" />
+                    <div class="input-group mb-3">
+                        <label for="betAmount" class="input-group-text">Monto</label>
+                        <input id="betAmount" name="Amount" type="number" step="0.01" min="1" max="9999999999"
+                               value="1000" required class="form-control" aria-describedby="betHelp" />
+                        <span class="input-group-text">FutCoins</span>
+                    </div>
+                    <div class="row g-2 text-center">
+                        <div class="col">
+                            <button type="submit" name="Pick" value="Home" class="btn btn-outline-success w-100">
+                                1 · @Model.HomeOdds.ToString("0.00")
+                            </button>
+                        </div>
+                        <div class="col">
+                            <button type="submit" name="Pick" value="Draw" class="btn btn-outline-success w-100">
+                                X · @Model.DrawOdds.ToString("0.00")
+                            </button>
+                        </div>
+                        <div class="col">
+                            <button type="submit" name="Pick" value="Away" class="btn btn-outline-success w-100">
+                                2 · @Model.AwayOdds.ToString("0.00")
+                            </button>
+                        </div>
+                    </div>
+                    <small id="betHelp" class="text-muted d-block text-center mt-2">
+                        Elige tu monto y haz clic en la cuota para apostar.
+                    </small>
+                </form>
+            }
+            else if (User.Identity?.IsAuthenticated != true)
+            {
+                <div class="text-center mt-3">
+                    <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Url.Action("Detail", "Matches", new { id = Model.Id })"
+                       class="btn btn-success">Inicia sesión para apostar</a>
+                </div>
+            }
+        }
     </div>
 
     <div class="card-footer d-flex flex-wrap gap-3 justify-content-between align-items-center">
@@ -93,7 +137,6 @@
                         <button class="btn btn-outline-danger" type="submit">Desactivar</button>
                     </form>
                 }
-                <button class="btn btn-success" disabled title="Disponible en un módulo posterior">Apostar (Módulo 8)</button>
             }
             else { <span class="text-muted">Este partido ya no admite cambios.</span> }
         </div>

@@ -11,7 +11,7 @@
         <li class="nav-item"><span class="navbar-text text-white">@currentUser.FullName</span></li>
         @if (!User.IsInRole(DbSeeder.AdminRole))
         {
-            <li class="nav-item"><span class="badge bg-warning text-dark">@currentUser.Balance.ToString("N0") FutCoins</span></li>
+            <li class="nav-item"><span class="badge bg-warning text-dark">@currentUser.Balance.ToString("N2") FutCoins</span></li>
         }
         <li class="nav-item">
             <form asp-controller="Account" asp-action="Logout" method="post">

@@ -61,6 +61,10 @@ public class GenericRepository<T> : IGenericRepository<T> where T : AuditableEnt
     private async Task SaveAsync()
     {
         try { await _context.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new ConcurrentUpdateException(ex);
+        }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 })
         {
             throw new DuplicateRecordException(ex);
