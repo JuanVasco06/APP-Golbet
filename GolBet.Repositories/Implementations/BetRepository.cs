@@ -22,4 +22,12 @@ public class BetRepository : GenericRepository<Bet>, IBetRepository
             .ThenByDescending(b => b.Id)
             .AsNoTracking()
             .ToListAsync();
+
+    // Not AsNoTracking on purpose: closing a match changes these bets and
+    // their users' balances, so the change tracker has to see them.
+    public async Task<List<Bet>> GetPendingByMatchAsync(int matchId)
+        => await _dbSet
+            .Where(b => b.MatchId == matchId && b.Status == BetStatus.Pending)
+            .Include(b => b.User)
+            .ToListAsync();
 }

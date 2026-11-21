@@ -1,6 +1,7 @@
 using AutoMapper;
 using GolBet.Entities;
 using GolBet.Entities.Enums;
+using GolBet.Repositories.Exceptions;
 using GolBet.Repositories.Interfaces;
 using GolBet.Services.DTOs;
 using GolBet.Services.Exceptions;
@@ -9,7 +10,7 @@ using GolBet.Services.Interfaces;
 
 namespace GolBet.Services.Implementations;
 
-public class MatchService(IMatchRepository matches, IGenericRepository<Team> teams, IMapper mapper) : IMatchService
+public class MatchService(IMatchRepository matches, IBetRepository bets, IGenericRepository<Team> teams, IMapper mapper) : IMatchService
 {
     public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null, int? teamId = null, string? search = null)
         => mapper.Map<IEnumerable<MatchDto>>(await matches.GetAllWithTeamsAsync(status, teamId, search));
@@ -58,6 +59,79 @@ public class MatchService(IMatchRepository matches, IGenericRepository<Team> tea
         EnsureEditable(match);
         await matches.DeactivateAsync(id);
     }
+
+    public async Task StartMatchAsync(int id)
+    {
+        var match = await matches.GetByIdAsync(id);
+        if (match is null || !match.IsActive) throw new KeyNotFoundException();
+
+        if (match.Status != MatchStatus.Scheduled)
+            throw new BusinessRuleException("Solo un partido programado puede iniciarse.");
+
+        // From here on the betting rule (Scheduled + future date) rejects new bets.
+        match.Status = MatchStatus.InProgress;
+        await matches.UpdateAsync(match);
+    }
+
+    public async Task<ResolutionSummaryDto> CloseMatchAsync(MatchResultFormDto dto)
+    {
+        var match = await matches.GetByIdAsync(dto.MatchId);
+        if (match is null || !match.IsActive) throw new KeyNotFoundException();
+
+        // First guard against paying twice: the state machine only moves forward.
+        if (match.Status == MatchStatus.Finished)
+            throw new BusinessRuleException("Este partido ya fue cerrado y sus apuestas resueltas.");
+        if (match.Status != MatchStatus.InProgress)
+            throw new BusinessRuleException("El partido debe estar «En juego» para cerrarse. Inícialo primero.");
+
+        match.HomeGoals = dto.HomeGoals;
+        match.AwayGoals = dto.AwayGoals;
+        match.Status = MatchStatus.Finished;
+
+        var winningPick = GetWinningPick(dto.HomeGoals, dto.AwayGoals);
+
+        // Second guard: the query only returns Pending bets, so resolved ones never come back.
+        var pendingBets = await bets.GetPendingByMatchAsync(match.Id);
+        var summary = new ResolutionSummaryDto { ResolvedBets = pendingBets.Count };
+
+        foreach (var bet in pendingBets)
+        {
+            if (bet.Pick == winningPick)
+            {
+                // Pays with the odds frozen when the bet was placed, never the live ones.
+                var payout = decimal.Round(bet.Amount * bet.OddsAtPlacement, 2, MidpointRounding.AwayFromZero);
+                bet.Status = BetStatus.Won;
+                bet.User.Balance += payout;
+                // Same trick as when betting: if this user places a bet at the same moment,
+                // one of the two saves is rejected instead of one overwriting the other.
+                bet.User.ConcurrencyStamp = Guid.NewGuid().ToString();
+                summary.WonBets++;
+                summary.TotalPaid += payout;
+            }
+            else
+            {
+                // The stake was already deducted when the bet was placed.
+                bet.Status = BetStatus.Lost;
+            }
+        }
+
+        try
+        {
+            // One save: the match, every bet and every balance go in a single transaction.
+            await matches.UpdateAsync(match);
+        }
+        catch (ConcurrentUpdateException)
+        {
+            throw new BusinessRuleException("El saldo de un apostador cambió mientras se cerraba el partido. No se guardó nada; inténtalo de nuevo.");
+        }
+
+        return summary;
+    }
+
+    private static BetPick GetWinningPick(int homeGoals, int awayGoals)
+        => homeGoals > awayGoals ? BetPick.Home
+         : homeGoals < awayGoals ? BetPick.Away
+         : BetPick.Draw;
 
     private static void EnsureEditable(Match match)
     {

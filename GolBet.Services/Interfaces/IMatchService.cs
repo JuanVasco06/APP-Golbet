@@ -13,4 +13,10 @@ public interface IMatchService
     Task CreateAsync(MatchFormDto dto);
     Task UpdateAsync(MatchFormDto dto);
     Task DeactivateAsync(int id);
+
+    /// <summary>Scheduled -> InProgress. Betting closes.</summary>
+    Task StartMatchAsync(int id);
+
+    /// <summary>InProgress -> Finished: saves the score and resolves every pending bet.</summary>
+    Task<ResolutionSummaryDto> CloseMatchAsync(MatchResultFormDto dto);
 }

@@ -128,17 +128,28 @@
     <div class="card-footer d-flex flex-wrap gap-3 justify-content-between align-items-center">
         <small class="text-muted">🎟️ @Model.TotalBets apuestas realizadas</small>
         <div class="d-flex flex-wrap gap-2">
-            @if (Model.Status == MatchStatus.Scheduled && Model.Date > DateTime.UtcNow)
+            @if (User.IsInRole(DbSeeder.AdminRole) && Model.Status == MatchStatus.Scheduled)
             {
-                @if (User.IsInRole(DbSeeder.AdminRole))
+                @* A match whose date has passed can still be started, but not edited. *@
+                if (Model.Date > DateTime.UtcNow)
                 {
                     <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">Editar</a>
                     <form asp-action="Deactivate" asp-route-id="@Model.Id" method="post" data-confirm="¿Desactivar este partido?">
                         <button class="btn btn-outline-danger" type="submit">Desactivar</button>
                     </form>
                 }
+                <form asp-action="Start" asp-route-id="@Model.Id" method="post" data-confirm="¿Iniciar el partido? Las apuestas quedarán cerradas.">
+                    <button class="btn btn-warning" type="submit">Iniciar partido</button>
+                </form>
             }
-            else { <span class="text-muted">Este partido ya no admite cambios.</span> }
+            else if (User.IsInRole(DbSeeder.AdminRole) && Model.Status == MatchStatus.InProgress)
+            {
+                <a asp-action="Close" asp-route-id="@Model.Id" class="btn btn-danger">Cerrar partido</a>
+            }
+            else if (Model.Status != MatchStatus.Scheduled || Model.Date <= DateTime.UtcNow)
+            {
+                <span class="text-muted">Este partido ya no admite cambios.</span>
+            }
         </div>
     </div>
 </div>

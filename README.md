@@ -1,8 +1,8 @@
 # GolBet
 
-Simulador académico de apuestas de fútbol desarrollado con ASP.NET Core MVC, .NET 8 y SQL Server. Incluye los módulos 1 al 8 y el buscador de partidos de la segunda entrega.
+Simulador académico de apuestas de fútbol desarrollado con ASP.NET Core MVC, .NET 8 y SQL Server. Incluye los módulos 1 al 9 y el buscador de partidos de la segunda entrega.
 
-La aplicación permite consultar partidos, buscar por nombre de equipo y filtrar por estado. Incluye registro e inicio de sesión; el administrador puede gestionar equipos y partidos. Los apostadores pueden apostar FutCoins en partidos programados futuros y consultar sus apuestas, con la cuota guardada al momento de apostar.
+La aplicación permite consultar partidos, buscar por nombre de equipo y filtrar por estado. Incluye registro e inicio de sesión; el administrador puede gestionar equipos y partidos. Los apostadores pueden apostar FutCoins en partidos programados futuros y consultar sus apuestas, con la cuota guardada al momento de apostar. El administrador inicia el partido (se cierran las apuestas) y lo cierra con el marcador final: las apuestas se resuelven y los ganadores reciben su pago con esa cuota.
 
 ## Ejecutar en Windows
 
