@@ -7,11 +7,12 @@ using GolBet.Services.DTOs;
 using GolBet.Services.Exceptions;
 using GolBet.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace GolBet.Services.Implementations;
 
 public class BetService(IBetRepository bets, IMatchRepository matches,
-    UserManager<AppUser> userManager, IMapper mapper) : IBetService
+    UserManager<AppUser> userManager, IMapper mapper, ILogger<BetService> logger) : IBetService
 {
     public async Task PlaceBetAsync(string userId, BetFormDto dto)
     {
@@ -72,6 +73,12 @@ public class BetService(IBetRepository bets, IMatchRepository matches,
         {
             throw new BusinessRuleException("Tu saldo cambió mientras apostabas. Revisa el saldo e inténtalo de nuevo.");
         }
+
+        // Logged after the save: the audit line exists only for bets that were really stored.
+        logger.LogInformation(
+            "Bet placed: user {UserId} bet {Amount} on {Pick} " +
+            "for match {MatchId} at odds {Odds}",
+            userId, dto.Amount, dto.Pick, dto.MatchId, oddsAtPlacement);
     }
 
     public async Task<IEnumerable<BetDto>> GetMyBetsAsync(string userId)

@@ -7,10 +7,12 @@ using GolBet.Services.DTOs;
 using GolBet.Services.Exceptions;
 using GolBet.Services.Helpers;
 using GolBet.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace GolBet.Services.Implementations;
 
-public class MatchService(IMatchRepository matches, IBetRepository bets, IGenericRepository<Team> teams, IMapper mapper) : IMatchService
+public class MatchService(IMatchRepository matches, IBetRepository bets, IGenericRepository<Team> teams,
+    IMapper mapper, ILogger<MatchService> logger) : IMatchService
 {
     public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null, int? teamId = null, string? search = null)
         => mapper.Map<IEnumerable<MatchDto>>(await matches.GetAllWithTeamsAsync(status, teamId, search));
@@ -124,6 +126,13 @@ public class MatchService(IMatchRepository matches, IBetRepository bets, IGeneri
         {
             throw new BusinessRuleException("El saldo de un apostador cambió mientras se cerraba el partido. No se guardó nada; inténtalo de nuevo.");
         }
+
+        // Permanent record of the receipt the admin sees once.
+        logger.LogInformation(
+            "Match {MatchId} closed {HomeGoals}-{AwayGoals}: " +
+            "{ResolvedBets} bets resolved, {WonBets} won, {TotalPaid} paid",
+            match.Id, dto.HomeGoals, dto.AwayGoals,
+            summary.ResolvedBets, summary.WonBets, summary.TotalPaid);
 
         return summary;
     }

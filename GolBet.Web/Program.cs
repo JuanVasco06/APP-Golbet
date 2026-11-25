@@ -8,6 +8,7 @@ using GolBet.Services.Implementations;
 using GolBet.Services.Interfaces;
 using GolBet.Services.Mapping;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using System.Globalization;
 
 var culture = new CultureInfo("es-CO");
@@ -15,6 +16,10 @@ CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog replaces the default logger and reads its settings from the "Serilog" section of appsettings.json
+builder.Host.UseSerilog((context, config) =>
+    config.ReadFrom.Configuration(context.Configuration));
 
 builder.Services.AddControllersWithViews(options =>
 {
@@ -72,16 +77,24 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
+// Unhandled exceptions (500): friendly page outside development,
+// full stack trace while developing
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Error/General");
     app.UseHsts();
 }
 
+// Status codes without a body (404 and friends): re-execute
+// the pipeline against ErrorController
+app.UseStatusCodePagesWithReExecute("/Error/{0}");
+
 // The HTTP profile is loopback-only and works without a development certificate.
 if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
-app.UseStatusCodePagesWithReExecute("/Home/StatusCodePage", "?code={0}");
 app.UseStaticFiles();
+
+// One clean line per request: method, path, status and duration
+app.UseSerilogRequestLogging();
 
 app.UseRouting();
 
